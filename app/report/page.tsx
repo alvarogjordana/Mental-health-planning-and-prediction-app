@@ -6,8 +6,8 @@ import { prisma } from "@/lib/db";
 import { WellbeingVertical } from "@/types";
 import { getMockDashboardData } from "@/lib/mock-dashboard";
 import { getOrGenerateAssessment, getWeekStart, type AssessmentResult } from "@/lib/ai";
-import { Header } from "@/components/Header";
 import { RegenerateButton } from "@/components/RegenerateButton";
+import { HelpBubble } from "@/components/HelpBubble";
 
 /* ─── Design tokens ─── */
 const PRIMARY = "#1B4FD8";
@@ -130,8 +130,6 @@ export default async function ReportPage({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-16">
-      <Header backHref="/" pageLabel="Report" />
-
       <main className="mx-auto max-w-[680px] px-6 pt-8">
 
         {/* ── 1. Page header ── */}
@@ -351,6 +349,14 @@ export default async function ReportPage({
         )}
 
       </main>
+
+      <HelpBubble items={[
+        { title: "Weekly Report", description: "An AI-generated summary of your week, produced by Claude. It analyses your mood patterns, primary drivers, sleep, and exercise across the last 7 days." },
+        { title: "Wellbeing Score", description: "The week's average overall score, weighted by your personal vertical priorities set during onboarding." },
+        { title: "Strengths & Improvements", description: "Areas where you performed above or below your own baseline — not a fixed standard, but relative to your recent history." },
+        { title: "AI Suggestions", description: "Personalised recommendations derived from your specific drivers, drainers, and patterns. Regenerate any time after a new check-in." },
+        { title: "Regenerate", description: "The report is cached. Click Regenerate to produce a fresh analysis after logging new check-ins." },
+      ]} />
     </div>
   );
 }

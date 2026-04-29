@@ -5,10 +5,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { WellbeingVertical } from "@/types";
 import { getMockDashboardData, type VerticalScoreData } from "@/lib/mock-dashboard";
-import { getOrGenerateAssessment } from "@/lib/ai";
 import { getWeatherData, computeWeatherModifiers } from "@/lib/integrations/weather";
 import { getCalendarData, computeCalendarScore, type CalendarData } from "@/lib/integrations/calendar";
-import { Header } from "@/components/Header";
+import { HelpBubble } from "@/components/HelpBubble";
 
 /* ─── Vertical → URL slug ─── */
 const VERTICAL_SLUG: Record<WellbeingVertical, string> = {
@@ -82,9 +81,6 @@ export default async function Home() {
   );
   const overallDiff = overallScore - lastWeekOverall;
 
-  /* Forecast text — cached; never throws */
-  const assessment = await getOrGenerateAssessment(user.id);
-
   /* Avatar initials */
   const initials = user.name
     .split(" ")
@@ -94,10 +90,7 @@ export default async function Home() {
     .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-white pb-28">
-
-      {/* ── 1. Header ── */}
-      <Header userName={user.name.split(" ")[0]} initials={initials} />
+    <div className="min-h-screen bg-white pb-16">
 
       {/* ── Weather strip ── */}
       {weatherData && (
@@ -186,22 +179,6 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* ── 4. Forecast Strip (AI-powered) ── */}
-        <section
-          className="mb-8 rounded-xl p-5"
-          style={{ backgroundColor: "#F8FAFC", border: "1px solid #E2E8F0" }}
-        >
-          <p
-            className="mb-3 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "#94A3B8" }}
-          >
-            If this week continues...
-          </p>
-          <p className="text-sm leading-relaxed" style={{ color: "#475569" }}>
-            {assessment.forecast}
-          </p>
-        </section>
-
         {/* Dev: reset profile */}
         <div className="pb-4 text-center">
           <Link
@@ -214,26 +191,13 @@ export default async function Home() {
         </div>
       </main>
 
-      {/* ── 6. Sticky check-in CTA ── */}
-      <div
-        className="fixed bottom-0 left-0 right-0 px-6 pb-7 pt-4"
-        style={{
-          backgroundColor: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          borderTop: "1px solid #F1F5F9",
-        }}
-      >
-        <div className="mx-auto max-w-[680px]">
-          <Link
-            href="/checkin"
-            className="block w-full rounded-xl py-3.5 text-center text-sm font-semibold text-white"
-            style={{ backgroundColor: "#1B4FD8" }}
-          >
-            Log today&apos;s check-in →
-          </Link>
-        </div>
-      </div>
+      <HelpBubble items={[
+        { title: "Overall Score", description: "Weighted average of your 5 wellbeing verticals (0–100). Weights are set by your priority ranking during onboarding." },
+        { title: "Vertical Cards", description: "Each card scores one area of your life. Click any card to see historical detail. Blue left border = higher priority vertical." },
+        { title: "Weather Modifiers", description: "Live weather data from OpenWeatherMap applies real-time adjustments of ±2–5 points to relevant verticals." },
+        { title: "Calendar Signal", description: "Your Work-Life Balance score is adjusted based on calendar density — how many hours are locked in meetings today." },
+        { title: "Data Source", description: "Scores currently use benchmark data. They improve in accuracy as you log more daily check-ins over time." },
+      ]} />
 
     </div>
   );

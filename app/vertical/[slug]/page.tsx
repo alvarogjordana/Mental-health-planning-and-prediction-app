@@ -2,7 +2,6 @@ export const dynamic = "force-dynamic";
 
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { Header } from "@/components/Header";
 import { WellbeingVertical } from "@/types";
 import { getMockDashboardData } from "@/lib/mock-dashboard";
 import { getOrGenerateAssessment } from "@/lib/ai";
@@ -85,9 +84,6 @@ export default async function VerticalDetailPage({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-16">
-
-      <Header backHref="/" pageLabel="Vertical" />
-
       <main className="mx-auto max-w-[680px] px-6 pt-8">
 
         {/* ── 1. Hero header ── */}

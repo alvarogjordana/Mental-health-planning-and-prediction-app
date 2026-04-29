@@ -5,8 +5,8 @@ import { prisma } from "@/lib/db";
 import { WellbeingVertical } from "@/types";
 import { getWeatherData } from "@/lib/integrations/weather";
 import { getCalendarData } from "@/lib/integrations/calendar";
-import { Header } from "@/components/Header";
 import { PageRefreshButton } from "@/components/PageRefreshButton";
+import { HelpBubble } from "@/components/HelpBubble";
 import { MoodBarChart, type MoodPoint } from "@/components/charts/MoodBarChart";
 
 /* ─── Design tokens ─── */
@@ -291,8 +291,6 @@ export default async function DataPage() {
 
   return (
     <div className="min-h-screen pb-16" style={{ backgroundColor: "#F8FAFC" }}>
-      <Header backHref="/" pageLabel="Data" initials={initials} />
-
       <main className="mx-auto max-w-[780px] px-6 pt-8">
 
         {/* ── Page header ── */}
@@ -786,6 +784,15 @@ export default async function DataPage() {
 
         </div>
       </main>
+
+      <HelpBubble items={[
+        { title: "Weather", description: "Live data from OpenWeatherMap for your set location (Boston). Last 7 days + 5-day forecast. Used to apply mood modifiers to Health, Social, Sleep, and Purpose." },
+        { title: "Calendar", description: "Read from your iCloud (personal) and HBS Outlook calendars via iCal feeds. Shows hours locked per day — overlapping events are merged so no time is double-counted." },
+        { title: "Health & Sleep", description: "Sourced entirely from your daily check-ins — sleep hours and exercise yes/no. Seeded entries show the 14-day baseline; future entries come from your real check-ins." },
+        { title: "Mood Logs", description: "Every daily check-in stored in the database. The bar chart shows 14-day score history. Scores range 0–100 (mood × 20)." },
+        { title: "Score History", description: "Computed from your VerticalScore records in Turso. Each check-in generates five vertical scores; overall is their weighted average using your priority ranking." },
+        { title: "Data Completeness", description: "Percentage of the last 7 days with full data coverage across weather logs, calendar events, and mood check-ins." },
+      ]} />
     </div>
   );
 }

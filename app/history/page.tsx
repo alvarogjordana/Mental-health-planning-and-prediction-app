@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { Header } from "@/components/Header";
+import { HelpBubble } from "@/components/HelpBubble";
 
 /* ─── Design tokens ─── */
 const TEXT   = "#0F172A";
@@ -125,8 +125,6 @@ export default async function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-16">
-      <Header backHref="/" pageLabel="History" />
-
       <main className="mx-auto max-w-[680px] px-6 pt-8">
 
         {/* ── 1. Page title ── */}
@@ -294,6 +292,13 @@ export default async function HistoryPage() {
           </>
         )}
       </main>
+
+      <HelpBubble items={[
+        { title: "Check-in Log", description: "Every daily check-in you have submitted, grouped by week. Each entry shows your mood, sleep hours, exercise, primary driver, and optional reflection." },
+        { title: "Mood Chart", description: "A 14-day bar chart of your overall wellbeing score (0–100). Each bar represents one day's check-in. Hover for details." },
+        { title: "Primary Driver", description: "The factor you identified as most shaping your mood that day — e.g. Work/calendar, Exercise, Social time. Used to detect recurring patterns." },
+        { title: "Score Computation", description: "Overall score = mood × 20. Vertical scores are derived from sleep hours (sleep/health) and primary driver (purpose, social, work-life)." },
+      ]} />
     </div>
   );
 }
