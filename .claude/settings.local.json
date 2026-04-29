@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(head -100 node_modules/recharts/types/cartesian/Line.d.ts)",
+      "Bash(find node_modules/recharts/types -name \"Line.d.ts\" -exec head -80 {} \\\\;)",
+      "Bash(npx tsc:*)",
+      "Bash",
+      "Skill(claude-api)"
+    ]
+  }
+}

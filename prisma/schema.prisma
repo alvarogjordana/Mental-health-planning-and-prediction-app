@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id               String  @id @default(cuid())
+  name             String
+  location         String  @default("Boston") // city used for weather data
+  lifeStage        String? // collected during onboarding step 2
+  personalityNotes String?
+  priorities       String? // JSON array of priority strings
+  energizers       String? // JSON array: things that give energy
+  drainers         String? // JSON array: things that drain energy
+  verticalWeights  String? // JSON object: WellbeingVertical -> number (0–1, sums to 1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  moodLogs       MoodLog[]
+  verticalScores VerticalScore[]
+  weeklyReports  WeeklyReport[]
+  weatherLogs    WeatherLog[]
+}
+
+model MoodLog {
+  id           String   @id @default(cuid())
+  userId       String
+  date         DateTime @default(now())
+  answers      String   // JSON array of CheckInAnswer
+  overallScore Float    // 0–100
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, date])
+}
+
+model VerticalScore {
+  id         String   @id @default(cuid())
+  userId     String
+  date       DateTime
+  vertical   String   // WellbeingVertical enum value
+  score      Float    // 0–100
+  sourceData String?  // JSON object with the raw data that produced the score
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, date])
+  @@index([userId, vertical])
+}
+
+model WeeklyReport {
+  id            String   @id @default(cuid())
+  userId        String
+  weekStartDate DateTime
+  summaryText   String
+  suggestions   String   // JSON: full AssessmentResult stored here
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, weekStartDate])
+}
+
+model WeatherLog {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  city      String
+  tempF     Float
+  condition String   // OWM main condition: "Clear", "Clouds", "Rain", "Snow", etc.
+  humidity  Int
+  windMph   Float
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, date])
+}
