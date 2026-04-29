@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { WellbeingVertical } from "@/types";
 import { getWeatherData } from "@/lib/integrations/weather";
 import { getCalendarData } from "@/lib/integrations/calendar";
 import { Header } from "@/components/Header";
