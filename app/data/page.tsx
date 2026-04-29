@@ -161,6 +161,10 @@ export default async function DataPage() {
   const user = await prisma.user.findFirst();
   if (!user) redirect("/onboarding");
 
+  const weights: Record<string, number> = user.verticalWeights
+    ? JSON.parse(user.verticalWeights)
+    : Object.fromEntries(Object.values(WellbeingVertical).map((v) => [v, 0.2]));
+
   const now = new Date();
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(now.getDate() - 7);
