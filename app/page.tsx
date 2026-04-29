@@ -234,6 +234,10 @@ function VerticalCard({ vs, weight }: { vs: VerticalScoreData; weight: number })
           style={{ width: `${vs.score}%`, backgroundColor: "#1B4FD8" }}
         />
       </div>
+      <div className="mt-3 flex items-center gap-1 text-[11px] font-medium" style={{ color: "#1B4FD8" }}>
+        <span>Details</span>
+        <span>→</span>
+      </div>
     </div>
   );
 }
