@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getWeatherData } from "@/lib/integrations/weather";
 import { getCalendarData } from "@/lib/integrations/calendar";
-import { getMockTrendData } from "@/lib/mock-dashboard";
 import { Header } from "@/components/Header";
 import { PageRefreshButton } from "@/components/PageRefreshButton";
 import { MoodBarChart, type MoodPoint } from "@/components/charts/MoodBarChart";
@@ -217,8 +216,33 @@ export default async function DataPage() {
     };
   });
 
-  // Mock trend data for vertical score history
-  const trendData = getMockTrendData().filter(d => !d.isForecast);
+  // Build score history from real VerticalScore records grouped by date
+  const vsByDate = new Map<string, Partial<Record<string, number>>>();
+  for (const vs of dbVertScores) {
+    const iso = dateToISO(new Date(vs.date));
+    if (!vsByDate.has(iso)) vsByDate.set(iso, {});
+    vsByDate.get(iso)![vs.vertical] = Math.round(vs.score);
+  }
+  const scoreHistory = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - (13 - i));
+    const iso = dateToISO(d);
+    const vs = vsByDate.get(iso) ?? {};
+    const health   = vs[WellbeingVertical.HEALTH]    ?? null;
+    const workLife = vs[WellbeingVertical.WORK_LIFE]  ?? null;
+    const social   = vs[WellbeingVertical.SOCIAL]     ?? null;
+    const purpose  = vs[WellbeingVertical.PURPOSE]    ?? null;
+    const sleep    = vs[WellbeingVertical.SLEEP]      ?? null;
+    const hasData  = health !== null || workLife !== null || social !== null || purpose !== null || sleep !== null;
+    const overall  = hasData ? Math.round(
+      (health   ?? 0) * (weights[WellbeingVertical.HEALTH]    ?? 0.2) +
+      (workLife ?? 0) * (weights[WellbeingVertical.WORK_LIFE]  ?? 0.2) +
+      (social   ?? 0) * (weights[WellbeingVertical.SOCIAL]     ?? 0.2) +
+      (purpose  ?? 0) * (weights[WellbeingVertical.PURPOSE]    ?? 0.2) +
+      (sleep    ?? 0) * (weights[WellbeingVertical.SLEEP]      ?? 0.2)
+    ) : null;
+    return { dateLabel: fmtDate(d), iso, overall, health, workLife, social, purpose, sleep };
+  });
 
   // Sets for source computation
   const hasRealCalendar = !!(
@@ -661,34 +685,31 @@ export default async function DataPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {trendData.map((day, i) => {
-                      // Approximate the ISO date from the trend data label
-                      const d = new Date();
-                      d.setDate(d.getDate() - (13 - i));
-                      const iso = dateToISO(d);
-                      const hasCheckin = checkinDates.has(iso);
-                      const source = hasCheckin && hasRealCalendar
-                        ? "Check-in + Calendar"
-                        : hasCheckin
-                        ? "Check-in"
-                        : hasRealCalendar
-                        ? "Calendar + Mock"
-                        : "Mock data";
-                      const sourceColor = hasCheckin ? "#16A34A" : MUTED;
+                    {scoreHistory.map((day, i) => {
+                      const hasCheckin = checkinDates.has(day.iso);
+                      const source = day.overall === null ? "No data"
+                        : hasCheckin && hasRealCalendar ? "Check-in + Calendar"
+                        : hasCheckin ? "Check-in"
+                        : "Check-in (seeded)";
+                      const sourceColor = day.overall === null ? MUTED : "#16A34A";
+
+                      const fmt = (v: number | null) => v !== null
+                        ? <span style={scoreStyle(v)}>{v}</span>
+                        : <span style={{ color: MUTED }}>—</span>;
 
                       return (
-                        <tr key={day.date} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#F8FAFC" }}>
-                          <Td>{day.date}</Td>
+                        <tr key={day.iso} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#F8FAFC" }}>
+                          <Td>{day.dateLabel}</Td>
                           <Td>
-                            <span style={{ ...scoreStyle(day.overall), fontWeight: 700 }}>
-                              {day.overall}
-                            </span>
+                            {day.overall !== null
+                              ? <span style={{ ...scoreStyle(day.overall), fontWeight: 700 }}>{day.overall}</span>
+                              : <span style={{ color: MUTED }}>—</span>}
                           </Td>
-                          <Td><span style={scoreStyle(day.health)}>{day.health}</span></Td>
-                          <Td><span style={scoreStyle(day.workLife)}>{day.workLife}</span></Td>
-                          <Td><span style={scoreStyle(day.social)}>{day.social}</span></Td>
-                          <Td><span style={scoreStyle(day.purpose)}>{day.purpose}</span></Td>
-                          <Td><span style={scoreStyle(day.sleep)}>{day.sleep}</span></Td>
+                          <Td>{fmt(day.health)}</Td>
+                          <Td>{fmt(day.workLife)}</Td>
+                          <Td>{fmt(day.social)}</Td>
+                          <Td>{fmt(day.purpose)}</Td>
+                          <Td>{fmt(day.sleep)}</Td>
                           <Td>
                             <span className="text-[11px] font-medium" style={{ color: sourceColor }}>
                               {source}

@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "node --env-file=.env.local scripts/turso-push.mjs"
+    "db:push": "node --env-file=.env.local scripts/turso-push.mjs",
+    "db:seed": "node --env-file=.env.local scripts/seed-mock-checkins.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.87.0",
