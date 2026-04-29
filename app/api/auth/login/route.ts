@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 
 function safeCompare(a: string, b: string): boolean {
   const ha = createHash("sha256").update(a).digest();
@@ -25,21 +25,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    // Build HMAC-signed session token: timestamp.base64sig
-    const data = String(Date.now());
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const sigBytes = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(data),
-    );
-    const sig   = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
+    const data  = String(Date.now());
+    const sig   = createHmac("sha256", secret).update(data).digest("base64");
     const token = `${data}.${sig}`;
 
     const response = NextResponse.json({ success: true });
