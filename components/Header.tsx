@@ -7,8 +7,11 @@
  * Sub-page variant (backHref provided): shows "← Back to dashboard" on the left,
  * page label centered, nav icons + profile icon on the right.
  */
+"use client";
+
 import Link from "next/link";
-import { ClipboardList, TrendingUp, FileText, Database, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ClipboardList, TrendingUp, FileText, Database, User, LogOut } from "lucide-react";
 
 const MUTED    = "#94A3B8";
 const PRIMARY  = "#1B4FD8";
@@ -26,6 +29,13 @@ interface HeaderProps {
 }
 
 export function Header({ backHref, pageLabel, userName, initials }: HeaderProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  };
+
   return (
     <header className="sticky top-0 z-20 bg-white" style={{ borderBottom: `1px solid ${BORDER}` }}>
       {/*
@@ -91,6 +101,10 @@ export function Header({ backHref, pageLabel, userName, initials }: HeaderProps)
               <User size={18} style={{ color: MUTED }} />
             </Link>
           )}
+
+          <button onClick={handleLogout} aria-label="Sign out" className="transition-opacity hover:opacity-70">
+            <LogOut size={18} style={{ color: MUTED }} />
+          </button>
         </div>
 
       </div>
