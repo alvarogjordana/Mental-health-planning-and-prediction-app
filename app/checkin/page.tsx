@@ -4,11 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 
 /* ─── Types ─── */
-type Step = "loading" | "already_done" | 1 | 2 | 3 | "saved";
+type Step = "loading" | "already_done" | 1 | 2 | 3 | 4 | 5 | "saved";
 
 interface Answers {
   mood: string;
   moodScore: number;
+  sleepHours: number | null;
+  exercised: boolean | null;
   primaryDriver: string;
   reflection: string;
 }
@@ -52,10 +54,10 @@ function getEncouragement(moodScore: number): string {
 }
 
 /* ─── Progress dots ─── */
-function ProgressDots({ current }: { current: 1 | 2 | 3 }) {
+function ProgressDots({ current }: { current: 1 | 2 | 3 | 4 | 5 }) {
   return (
     <div className="flex items-center justify-center gap-2.5">
-      {([1, 2, 3] as const).map((n) => {
+      {([1, 2, 3, 4, 5] as const).map((n) => {
         const done = n < current;
         const active = n === current;
         return (
@@ -85,6 +87,8 @@ export default function CheckInPage() {
   const [answers, setAnswers] = useState<Answers>({
     mood: "",
     moodScore: 0,
+    sleepHours: null,
+    exercised: null,
     primaryDriver: "",
     reflection: "",
   });
@@ -131,7 +135,16 @@ export default function CheckInPage() {
     goTo(2);
   };
 
-  /* Q2 — tap a driver pill → show Continue button */
+  /* Q2 — sleep hours input */
+  const [sleepInput, setSleepInput] = useState("");
+
+  /* Q3 — exercise yes/no → auto-advance */
+  const selectExercise = (val: boolean) => {
+    setAnswers((prev) => ({ ...prev, exercised: val }));
+    goTo(4);
+  };
+
+  /* Q4 — tap a driver pill → show Continue button */
   const selectDriver = (driver: string) => {
     setAnswers((prev) => ({ ...prev, primaryDriver: driver }));
   };
@@ -152,6 +165,8 @@ export default function CheckInPage() {
           body: JSON.stringify({
             mood: answers.mood,
             moodScore: answers.moodScore,
+            sleepHours: answers.sleepHours,
+            exercised: answers.exercised,
             primaryDriver: answers.primaryDriver,
             reflection: skip ? "" : answers.reflection,
           }),
@@ -257,8 +272,95 @@ export default function CheckInPage() {
       );
     }
 
-    /* Q2 — Primary driver */
+    /* Q2 — Sleep hours */
     if (step === 2) {
+      const parsed = parseFloat(sleepInput);
+      const valid = !isNaN(parsed) && parsed > 0 && parsed <= 24;
+      return (
+        <div className="flex flex-col items-center gap-8 w-full">
+          <QuestionHeading>How many hours did you sleep last night?</QuestionHeading>
+          <div className="w-full max-w-[240px]">
+            <input
+              autoFocus
+              type="number"
+              min="0"
+              max="24"
+              step="0.5"
+              value={sleepInput}
+              onChange={(e) => setSleepInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && valid) {
+                  setAnswers((prev) => ({ ...prev, sleepHours: parsed }));
+                  goTo(3);
+                }
+              }}
+              placeholder="e.g. 7.5"
+              className="w-full outline-none rounded-lg text-center text-2xl font-semibold transition-all"
+              style={{
+                height: 64,
+                padding: "0 16px",
+                color: TEXT,
+                border: sleepInput ? `1px solid ${PRIMARY}` : "1px solid #E2E8F0",
+                boxShadow: sleepInput ? "0 0 0 3px rgba(27,79,216,0.10)" : "none",
+              }}
+            />
+          </div>
+          <div className="flex flex-col items-center gap-4 w-full max-w-[240px]">
+            <button
+              onClick={() => {
+                setAnswers((prev) => ({ ...prev, sleepHours: parsed }));
+                goTo(3);
+              }}
+              disabled={!valid}
+              className="w-full rounded-xl py-3.5 text-sm font-semibold text-white transition-colors"
+              style={{ backgroundColor: valid ? PRIMARY : "#CBD5E1", cursor: valid ? "pointer" : "default" }}
+            >
+              Continue →
+            </button>
+            <button
+              onClick={() => {
+                setAnswers((prev) => ({ ...prev, sleepHours: null }));
+                goTo(3);
+              }}
+              className="text-sm underline"
+              style={{ color: MUTED }}
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* Q3 — Exercise */
+    if (step === 3) {
+      return (
+        <div className="flex flex-col items-center gap-10 w-full">
+          <QuestionHeading>Did you exercise today?</QuestionHeading>
+          <div className="flex gap-4">
+            {([{ label: "Yes 💪", val: true }, { label: "No", val: false }] as const).map(({ label, val }) => (
+              <button
+                key={label}
+                onClick={() => selectExercise(val)}
+                className="flex items-center justify-center rounded-xl text-base font-semibold transition-all duration-150 active:scale-95"
+                style={{
+                  width: 140,
+                  height: 80,
+                  border: `2px solid ${answers.exercised === val ? PRIMARY : "#E2E8F0"}`,
+                  backgroundColor: answers.exercised === val ? "#EEF2FF" : "#ffffff",
+                  color: answers.exercised === val ? PRIMARY : "#475569",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    /* Q4 — Primary driver */
+    if (step === 4) {
       return (
         <div className="flex flex-col items-center gap-8 w-full">
           <QuestionHeading>What&apos;s shaping your mood the most today?</QuestionHeading>
@@ -289,7 +391,7 @@ export default function CheckInPage() {
             style={{ opacity: answers.primaryDriver ? 1 : 0, pointerEvents: answers.primaryDriver ? "auto" : "none" }}
           >
             <button
-              onClick={() => goTo(3)}
+              onClick={() => goTo(5)}
               className="px-8 py-3 rounded-xl text-sm font-semibold text-white"
               style={{ backgroundColor: PRIMARY }}
             >
@@ -300,8 +402,8 @@ export default function CheckInPage() {
       );
     }
 
-    /* Q3 — Reflection */
-    if (step === 3) {
+    /* Q5 — Reflection */
+    if (step === 5) {
       return (
         <div className="flex flex-col items-center gap-8 w-full">
           <QuestionHeading>Anything you want to note about today?</QuestionHeading>
@@ -349,7 +451,7 @@ export default function CheckInPage() {
     return null;
   };
 
-  const isQuestion = step === 1 || step === 2 || step === 3;
+  const isQuestion = step === 1 || step === 2 || step === 3 || step === 4 || step === 5;
 
   return (
     <div className="min-h-screen bg-white">
@@ -362,7 +464,7 @@ export default function CheckInPage() {
           ← Back
         </Link>
         <div className="absolute left-0 right-0 flex justify-center pointer-events-none">
-          {isQuestion && <ProgressDots current={step as 1 | 2 | 3} />}
+          {isQuestion && <ProgressDots current={step as 1 | 2 | 3 | 4 | 5} />}
         </div>
         <span className="w-12" /> {/* spacer to balance the back link */}
       </div>

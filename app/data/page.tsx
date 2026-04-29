@@ -197,15 +197,21 @@ export default async function DataPage() {
     let answers: Array<{ questionId: string; answer: string }> = [];
     try { answers = JSON.parse(log.answers); } catch { /* ignore */ }
     const get = (id: string) => answers.find(a => a.questionId === id)?.answer ?? "";
+    const sleepRaw = get("sleepHours");
+    const sleepHours = sleepRaw !== "" ? parseFloat(sleepRaw) : null;
+    const exercisedRaw = get("exercised");
+    const exercised = exercisedRaw === "yes" ? true : exercisedRaw === "no" ? false : null;
     return {
-      id:       log.id,
-      date:     new Date(log.date),
-      dateISO:  dateToISO(new Date(log.date)),
-      dateLabel: fmtDate(new Date(log.date)),
-      mood:     get("mood"),
-      score:    Math.round(log.overallScore),
-      driver:   get("primaryDriver"),
+      id:         log.id,
+      date:       new Date(log.date),
+      dateISO:    dateToISO(new Date(log.date)),
+      dateLabel:  fmtDate(new Date(log.date)),
+      mood:       get("mood"),
+      score:      Math.round(log.overallScore),
+      driver:     get("primaryDriver"),
       reflection: get("reflection"),
+      sleepHours,
+      exercised,
     };
   });
 
@@ -481,74 +487,76 @@ export default async function DataPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {trendData.slice(-7).map((trend, i) => {
-                    const mood = parsedMoods.find(m => {
-                      const d = new Date();
-                      d.setDate(d.getDate() - (6 - i));
-                      return m.date.toDateString() === d.toDateString();
-                    });
-                    const sleepHrs = Math.round((5 + (trend.sleep / 100) * 4) * 10) / 10;
-                    const isExercise = mood?.driver
-                      ? ["Exercise", "Gym", "Run", "Workout", "Yoga", "Sport"].some(k =>
-                          mood.driver.toLowerCase().includes(k.toLowerCase())
-                        )
-                      : false;
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date(now);
+                    d.setDate(d.getDate() - (6 - i));
+                    const dateLabel = fmtDate(d);
+                    const mood = parsedMoods.find(m => m.date.toDateString() === d.toDateString());
+                    const sleepHrs = mood?.sleepHours ?? null;
+                    const isExercise = mood?.exercised ?? null;
                     const energy =
                       !mood ? "—"
                       : mood.score >= 80 ? "High 🔥"
                       : mood.score >= 60 ? "Good"
                       : mood.score >= 40 ? "Low 😕"
                       : "Very low";
+                    const sleepScore = sleepHrs !== null
+                      ? Math.min(100, sleepHrs >= 8 ? 100 : sleepHrs >= 7 ? Math.round(70 + (sleepHrs - 7) * 30) : sleepHrs >= 6 ? Math.round(45 + (sleepHrs - 6) * 25) : Math.round(sleepHrs * 7.5))
+                      : null;
+                    const healthScore = (sleepScore !== null || isExercise !== null)
+                      ? Math.min(100, Math.round((sleepScore ?? 60) * 0.8 + (isExercise === true ? 20 : 0)))
+                      : null;
 
                     return (
-                      <tr key={trend.date} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#F8FAFC" }}>
-                        <Td>{trend.date}</Td>
+                      <tr key={dateLabel} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#F8FAFC" }}>
+                        <Td>{dateLabel}</Td>
                         <Td>
-                          <span style={sleepHrsStyle(sleepHrs)}>{sleepHrs}h</span>
+                          {sleepHrs !== null
+                            ? <span style={sleepHrsStyle(sleepHrs)}>{sleepHrs}h</span>
+                            : <span style={{ color: MUTED }}>—</span>}
                         </Td>
                         <Td>
-                          <span style={scoreStyle(trend.sleep)}>{trend.sleep}</span>
+                          {sleepScore !== null
+                            ? <span style={scoreStyle(sleepScore)}>{sleepScore}</span>
+                            : <span style={{ color: MUTED }}>—</span>}
                         </Td>
                         <Td>
-                          <span
-                            style={{
-                              color: isExercise ? "#16A34A" : MUTED,
-                              fontWeight: isExercise ? 600 : 400,
-                            }}
-                          >
-                            {isExercise ? "✓" : "—"}
-                          </span>
+                          {isExercise === null
+                            ? <span style={{ color: MUTED }}>—</span>
+                            : <span style={{ color: isExercise ? "#16A34A" : MUTED, fontWeight: isExercise ? 600 : 400 }}>
+                                {isExercise ? "✓" : "✗"}
+                              </span>}
                         </Td>
                         <Td>{energy}</Td>
                         <Td>
-                          <span style={scoreStyle(trend.health)}>{trend.health}</span>
+                          {healthScore !== null
+                            ? <span style={scoreStyle(healthScore)}>{healthScore}</span>
+                            : <span style={{ color: MUTED }}>—</span>}
                         </Td>
                       </tr>
                     );
                   })}
                   {/* Average row */}
-                  <tr style={{ borderTop: `1px solid ${BORDER}`, backgroundColor: "#F1F5F9" }}>
-                    <Td><span className="font-semibold">7-day avg</span></Td>
-                    <Td>
-                      {(() => {
-                        const last7 = trendData.slice(-7);
-                        const avg = Math.round((last7.reduce((s, d) => s + (5 + (d.sleep / 100) * 4), 0) / 7) * 10) / 10;
-                        return <span style={sleepHrsStyle(avg)}>{avg}h</span>;
-                      })()}
-                    </Td>
-                    <Td>
-                      <span style={scoreStyle(Math.round(trendData.slice(-7).reduce((s, d) => s + d.sleep, 0) / 7))}>
-                        {Math.round(trendData.slice(-7).reduce((s, d) => s + d.sleep, 0) / 7)}
-                      </span>
-                    </Td>
-                    <Td>—</Td>
-                    <Td>—</Td>
-                    <Td>
-                      <span style={scoreStyle(Math.round(trendData.slice(-7).reduce((s, d) => s + d.health, 0) / 7))}>
-                        {Math.round(trendData.slice(-7).reduce((s, d) => s + d.health, 0) / 7)}
-                      </span>
-                    </Td>
-                  </tr>
+                  {(() => {
+                    const last7 = parsedMoods.filter(m => m.date >= sevenDaysAgo);
+                    const withSleep = last7.filter(m => m.sleepHours !== null);
+                    const avgSleep = withSleep.length
+                      ? Math.round((withSleep.reduce((s, m) => s + m.sleepHours!, 0) / withSleep.length) * 10) / 10
+                      : null;
+                    const avgSleepScore = avgSleep !== null
+                      ? Math.min(100, avgSleep >= 8 ? 100 : avgSleep >= 7 ? Math.round(70 + (avgSleep - 7) * 30) : avgSleep >= 6 ? Math.round(45 + (avgSleep - 6) * 25) : Math.round(avgSleep * 7.5))
+                      : null;
+                    return (
+                      <tr style={{ borderTop: `1px solid ${BORDER}`, backgroundColor: "#F1F5F9" }}>
+                        <Td><span className="font-semibold">7-day avg</span></Td>
+                        <Td>{avgSleep !== null ? <span style={sleepHrsStyle(avgSleep)}>{avgSleep}h</span> : <span style={{ color: MUTED }}>—</span>}</Td>
+                        <Td>{avgSleepScore !== null ? <span style={scoreStyle(avgSleepScore)}>{avgSleepScore}</span> : <span style={{ color: MUTED }}>—</span>}</Td>
+                        <Td>—</Td>
+                        <Td>—</Td>
+                        <Td>—</Td>
+                      </tr>
+                    );
+                  })()}
                 </tbody>
               </table>
             </div>

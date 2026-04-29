@@ -54,9 +54,11 @@ export async function GET() {
    for the vertical that maps to the selected primary driver. */
 export async function POST(request: NextRequest) {
   try {
-    const { mood, moodScore, primaryDriver, reflection } = await request.json() as {
+    const { mood, moodScore, sleepHours, exercised, primaryDriver, reflection } = await request.json() as {
       mood: string;
       moodScore: number;
+      sleepHours: number | null;
+      exercised: boolean | null;
       primaryDriver: string;
       reflection: string;
     };
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
         date: now,
         answers: JSON.stringify([
           { questionId: "mood",          question: "How are you feeling right now?",              answer: mood },
+          { questionId: "sleepHours",    question: "How many hours did you sleep last night?",    answer: sleepHours !== null ? String(sleepHours) : "" },
+          { questionId: "exercised",     question: "Did you exercise today?",                     answer: exercised !== null ? (exercised ? "yes" : "no") : "" },
           { questionId: "primaryDriver", question: "What's shaping your mood the most today?",    answer: primaryDriver },
           { questionId: "reflection",    question: "Anything you want to note about today?",      answer: reflection },
         ]),
@@ -83,10 +87,48 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    /* Upsert the VerticalScore for the relevant vertical */
+    const range = todayRange();
+
+    /* Upsert SLEEP vertical score from reported sleep hours */
+    if (sleepHours !== null) {
+      const sleepScore = Math.min(100, Math.max(0,
+        sleepHours >= 8 ? 100 :
+        sleepHours >= 7 ? Math.round(70 + (sleepHours - 7) * 30) :
+        sleepHours >= 6 ? Math.round(45 + (sleepHours - 6) * 25) :
+        Math.round(sleepHours * 7.5)
+      ));
+      const existing = await prisma.verticalScore.findFirst({
+        where: { userId: user.id, vertical: WellbeingVertical.SLEEP, date: range },
+      });
+      const sourceData = JSON.stringify({ source: "checkin", sleepHours });
+      if (existing) {
+        await prisma.verticalScore.update({ where: { id: existing.id }, data: { score: sleepScore, sourceData } });
+      } else {
+        await prisma.verticalScore.create({ data: { userId: user.id, date: range.gte, vertical: WellbeingVertical.SLEEP, score: sleepScore, sourceData } });
+      }
+    }
+
+    /* Upsert HEALTH vertical score from sleep + exercise */
+    if (sleepHours !== null || exercised !== null) {
+      const sleepComponent = sleepHours !== null
+        ? Math.min(100, sleepHours >= 8 ? 100 : sleepHours >= 7 ? Math.round(70 + (sleepHours - 7) * 30) : sleepHours >= 6 ? Math.round(45 + (sleepHours - 6) * 25) : Math.round(sleepHours * 7.5))
+        : 60; // neutral fallback if not provided
+      const exerciseBonus = exercised === true ? 20 : exercised === false ? 0 : 0;
+      const healthScore = Math.min(100, Math.round(sleepComponent * 0.8 + exerciseBonus));
+      const existing = await prisma.verticalScore.findFirst({
+        where: { userId: user.id, vertical: WellbeingVertical.HEALTH, date: range },
+      });
+      const sourceData = JSON.stringify({ source: "checkin", sleepHours, exercised });
+      if (existing) {
+        await prisma.verticalScore.update({ where: { id: existing.id }, data: { score: healthScore, sourceData } });
+      } else {
+        await prisma.verticalScore.create({ data: { userId: user.id, date: range.gte, vertical: WellbeingVertical.HEALTH, score: healthScore, sourceData } });
+      }
+    }
+
+    /* Upsert the VerticalScore for the primary driver vertical */
     const targetVertical = DRIVER_TO_VERTICAL[primaryDriver];
     if (targetVertical) {
-      const range = todayRange();
       const existing = await prisma.verticalScore.findFirst({
         where: { userId: user.id, vertical: targetVertical, date: range },
       });
